@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login">
+  <form method="post">
+    <h1>Sign in</h1>
+    {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+    <input type="password" name="password" placeholder="Password" autocomplete="current-password" autofocus required>
+    <button class="btn" type="submit">Continue</button>
+  </form>
+</body>
+</html>
