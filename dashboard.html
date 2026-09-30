@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Markets</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='favicon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Markets · EUR</h1>
+    <div class="controls">
+      <div class="tabs" role="group" aria-label="Chart period">
+        <button data-p="24h" aria-pressed="true">24h</button>
+        <button data-p="7d" aria-pressed="false">7d</button>
+        <button data-p="1m" aria-pressed="false">1m</button>
+      </div>
+      <form method="post" action="{{ url_for('logout') }}"><button class="link" type="submit">Log out</button></form>
+    </div>
+  </header>
+
+  {% if error %}<div class="banner" role="alert">{{ error }}</div>{% endif %}
+  <main id="list"></main>
+  <p class="credit">Data by CoinGecko</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const coins = {{ (coins or [])|tojson }};
+const PERIODS = { "24h": 24 * 3600e3, "7d": 7 * 86400e3, "1m": 30 * 86400e3 };
+const eur = v => new Intl.NumberFormat(undefined, { style: "currency", currency: "EUR",
+  minimumFractionDigits: v < 1 ? 4 : 2, maximumFractionDigits: v < 1 ? 5 : 2 }).format(v);
+const charts = {};
+let period = "24h";
+
+function slice(points, p) {
+  const end = points[points.length - 1][0];
+  return points.filter(x => x[0] >= end - PERIODS[p]);
+}
+const labels = pts => pts.map(x => new Date(x[0]).toLocaleString(undefined,
+  { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }));
+
+const list = document.getElementById("list");
+coins.forEach(c => {
+  const up = (c.change ?? 0) >= 0;
+  const row = document.createElement("section");
+  row.className = "row";
+  row.innerHTML = `
+    <div><div class="name">${c.name}</div><div class="sym">${c.symbol}</div></div>
+    <div>
+      <div class="price">${eur(c.price)}</div>
+      <div class="chg ${up ? "up" : "down"}">${c.change == null ? "n/a" : (up ? "+" : "−") + Math.abs(c.change).toFixed(2) + "% 24h"}</div>
+    </div>
+    <div class="chart"><canvas></canvas></div>`;
+  list.appendChild(row);
+
+  const pts = slice(c.points, period);
+  charts[c.id] = new Chart(row.querySelector("canvas"), {
+    type: "line",
+    data: { labels: labels(pts), datasets: [{
+      data: pts.map(x => x[1]), borderColor: "#b967ff", borderWidth: 1.5, tension: .25,
+      pointRadius: 0, pointHoverRadius: 3, pointHoverBackgroundColor: "#b967ff", fill: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { intersect: false, mode: "index" },
+      plugins: { legend: { display: false }, tooltip: {
+        displayColors: false, backgroundColor: "#0b0b0e", borderColor: "#2a2a31", borderWidth: 1,
+        titleColor: "#737380", bodyColor: "#f4f4f5", callbacks: { label: i => eur(i.parsed.y) } } },
+      scales: { x: { display: false }, y: { display: false } }
+    }
+  });
+});
+
+document.querySelectorAll(".tabs button").forEach(btn => btn.addEventListener("click", () => {
+  period = btn.dataset.p;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", b === btn));
+  coins.forEach(c => {
+    const pts = slice(c.points, period), ch = charts[c.id];
+    ch.data.labels = labels(pts);
+    ch.data.datasets[0].data = pts.map(x => x[1]);
+    ch.update();
+  });
+}));
+</script>
+</body>
+</html>
